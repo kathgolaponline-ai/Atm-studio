@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATM Live Studio - Secure Surveillance & Monitoring</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            900: '#090d16',
+                            800: '#111827',
+                            700: '#1f2937',
+                            600: '#374151',
+                        },
+                        security: {
+                            green: '#10b981',
+                            red: '#ef4444',
+                            amber: '#f59e0b',
+                            blue: '#3b82f6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+        
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(1000%); }
+        }
+        .scanline {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: rgba(16, 185, 129, 0.15);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+            animation: scanline 4s linear infinite;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-dark-900 text-gray-100 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- Toast Notification Banner -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 bg-dark-800 border border-emerald-500/50 shadow-2xl rounded-xl px-5 py-4 flex items-center space-x-3 text-sm">
+        <div id="toast-icon" class="text-emerald-400 text-lg"><i class="fa-solid fa-circle-check"></i></div>
+        <div>
+            <p id="toast-title" class="font-semibold text-white">System Notification</p>
+            <p id="toast-msg" class="text-gray-400 text-xs">Action completed successfully.</p>
+        </div>
+    </div>
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-dark-800/80 backdrop-blur border-b border-gray-800 sticky top-0 z-40 px-4 lg:px-8 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="bg-gradient-to-tr from-emerald-600 to-teal-500 p-2.5 rounded-xl shadow-lg shadow-emerald-900/20 text-white flex items-center justify-center">
+                <i class="fa-solid fa-video text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-base lg:text-lg tracking-tight flex items-center gap-2">
+                    ATM Live Studio 
+                    <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono uppercase tracking-wider">v1.2.0-secure</span>
+                </h1>
+                <p class="text-xs text-gray-400 hidden sm:block">Central Surveillance & Remote Camera Studio</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2 sm:space-x-4">
+            <!-- System Status Indicator -->
+            <div class="hidden md:flex items-center space-x-2 bg-dark-900/70 border border-gray-700/60 px-3 py-1.5 rounded-lg text-xs font-mono">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-gray-300">4 Active Nodes</span>
+            </div>
+
+            <!-- Auth status / Logout button -->
+            <button onclick="toggleAuthModal()" class="bg-dark-700 hover:bg-dark-600 text-gray-200 px-3.5 py-2 rounded-xl text-xs font-medium transition flex items-center space-x-2 border border-gray-700">
+                <i class="fa-solid fa-user-shield text-emerald-400"></i>
+                <span id="auth-btn-text">Admin Secured</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main App Container -->
+    <div class="flex-1 flex flex-col lg:flex-row">
+
+        <!-- Sidebar Navigation -->
+        <aside class="w-full lg:w-64 bg-dark-800/40 border-r border-gray-800/80 p-4 flex flex-row lg:flex-col justify-between overflow-x-auto lg:overflow-y-auto">
+            <nav class="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-1.5 w-full">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-tab flex-1 lg:flex-none flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <i class="fa-solid fa-chart-line w-5 text-center"></i>
+                    <span class="hidden sm:inline">Studio Dashboard</span>
+                </button>
+                <button onclick="switchTab('watch')" id="nav-watch" class="nav-tab flex-1 lg:flex-none flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-400 hover:bg-dark-700 hover:text-white">
+                    <i class="fa-solid fa-grip text-w w-5 text-center"></i>
+                    <span class="hidden sm:inline">Watch Grid</span>
+                </button>
+                <button onclick="switchTab('studio')" id="nav-studio" class="nav-tab flex-1 lg:flex-none flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-400 hover:bg-dark-700 hover:text-white">
+                    <i class="fa-solid fa-sliders w-5 text-center"></i>
+                    <span class="hidden sm:inline">Admin Studio</span>
+                </button>
+                <button onclick="switchTab('tokens')" id="nav-tokens" class="nav-tab flex-1 lg:flex-none flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition text-gray-400 hover:bg-dark-700 hover:text-white">
+                    <i class="fa-solid fa-key w-5 text-center"></i>
+                    <span class="hidden sm:inline">API & Tokens</span>
+                </button>
+            </nav>
+
+            <div class="hidden lg:block mt-8 pt-4 border-t border-gray-800 text-xs text-gray-500 font-mono">
+                <p class="font-semibold text-gray-400">STREAM ENCRYPTION</p>
+                <p class="mt-1 text-emerald-400/80">TLS 1.3 / WebRTC Active</p>
+                <p class="mt-3 text-[10px] text-gray-600">ATM-Live-Studio Next.js v14</p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-4 lg:p-6 overflow-y-auto">
+
+            <!-- TAB 1: DASHBOARD -->
+            <div id="tab-dashboard" class="tab-content space-y-6">
+                <!-- Welcome Banner & Quick Stats -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-dark-800/60 border border-gray-800 rounded-2xl p-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-gray-400 font-medium">Total Cameras</p>
+                            <h3 class="text-2xl font-bold mt-1 text-white">4</h3>
+                            <span class="text-emerald-400 text-xs font-mono mt-1 inline-block"><i class="fa-solid fa-arrow-up"></i> 100% Online</span>
+                        </div>
+                        <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-video"></i>
+                        </div>
+                    </div>
+                    <div class="bg-dark-800/60 border border-gray-800 rounded-2xl p-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-gray-400 font-medium">Security Alerts</p>
+                            <h3 class="text-2xl font-bold mt-1 text-white">0</h3>
+                            <span class="text-emerald-400 text-xs font-mono mt-1 inline-block">System Secure</span>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-500/10 text-blue-400 rounded-xl flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                    </div>
+                    <div class="bg-dark-800/60 border border-gray-800 rounded-2xl p-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-gray-400 font-medium">Active Streams</p>
+                            <h3 class="text-2xl font-bold mt-1 text-white">4</h3>
+                            <span class="text-amber-400 text-xs font-mono mt-1 inline-block">1080p 60FPS</span>
+                        </div>
+                        <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-xl flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-signal"></i>
+                        </div>
+                    </div>
+                    <div class="bg-dark-800/60 border border-gray-800 rounded-2xl p-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-gray-400 font-medium">Auth Token Status</p>
+                            <h3 class="text-2xl font-bold mt-1 text-emerald-400 font-mono text-lg pt-1">VALID</h3>
+                            <span class="text-gray-400 text-xs font-mono mt-1 inline-block">Expires in 58m</span>
+                        </div>
+                        <div class="w-12 h-12 bg-purple-500/10 text-purple-400 rounded-xl flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-fingerprint"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Monitoring Grid Preview -->
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-tower-broadcast text-emerald-400 text-sm"></i> Live ATM Feeds
+                        </h2>
+                        <button onclick="switchTab('watch')" class="text-xs text-emerald-400 hover:underline flex items-center gap-1 font-medium">
+                            View All Cameras <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Camera Card 1 -->
+                        <div class="bg-dark-800/80 border border-gray-800 rounded-2xl overflow-hidden shadow-xl group">
+                            <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+                                <div class="scanline"></div>
+                                <canvas id="cam-canvas-1" class="w-full h-full object-cover"></canvas>
+                                <div class="absolute top-3 left-3 bg-black/70 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-mono flex items-center gap-2 border border-white/10">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span>ATM-01: Main Lobby</span>
+                                </div>
+                                <div class="absolute top-3 right-3 bg-black/70 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-mono text-gray-300">
+                                    REC <span class="text-red-500">●</span>
+                                </div>
+                                <div class="absolute bottom-3 inset-x-3 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span class="text-[11px] font-mono bg-black/80 px-2 py-1 rounded text-emerald-400">ID: atm_lobby_01</span>
+                                    <button onclick="openCameraDetail('ATM-01: Main Lobby', 'atm_lobby_01')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow transition">
+                                        <i class="fa-solid fa-expand mr-1"></i> Expand Stream
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-dark-800 flex items-center justify-between text-xs text-gray-400">
+                                <span class="font-mono">Bitrate: 4.2 Mbps • Latency: 42ms</span>
+                                <span class="text-emerald-400 font-medium"><i class="fa-solid fa-lock mr-1"></i> Secure</span>
+                            </div>
+                        </div>
+
+                        <!-- Camera Card 2 -->
+                        <div class="bg-dark-800/80 border border-gray-800 rounded-2xl overflow-hidden shadow-xl group">
+                            <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+                                <div class="scanline"></div>
+                                <canvas id="cam-canvas-2" class="w-full h-full object-cover"></canvas>
+                                <div class="absolute top-3 left-3 bg-black/70 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-mono flex items-center gap-2 border border-white/10">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span>ATM-02: Drive-Thru Lane</span>
+                                </div>
+                                <div class="absolute top-3 right-3 bg-black/70 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-mono text-gray-300">
+                                    REC <span class="text-red-500">●</span>
+                                </div>
+                                <div class="absolute bottom-3 inset-x-3 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span class="text-[11px] font-mono bg-black/80 px-2 py-1 rounded text-emerald-400">ID: atm_drivethru_02</span>
+                                    <button onclick="openCameraDetail('ATM-02: Drive-Thru Lane', 'atm_drivethru_02')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow transition">
+                                        <i class="fa-solid fa-expand mr-1"></i> Expand Stream
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-dark-800 flex items-center justify-between text-xs text-gray-400">
+                                <span class="font-mono">Bitrate: 3.8 Mbps • Latency: 48ms</span>
+                                <span class="text-emerald-400 font-medium"><i class="fa-solid fa-lock mr-1"></i> Secure</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: WATCH GRID -->
+            <div id="tab-watch" class="tab-content hidden space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Multi-Camera Watch Grid</h2>
+                        <p class="text-xs text-gray-400">Real-time composite surveillance stream for all registered ATM terminals.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="setGridColumns(1)" class="bg-dark-700 hover:bg-dark-600 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-700">1x1</button>
+                        <button onclick="setGridColumns(2)" class="bg-emerald-600 px-3 py-1.5 rounded-lg text-xs font-medium text-white">2x2</button>
+                        <button onclick="triggerAllSnapshot()" class="bg-dark-700 hover:bg-dark-600 text-gray-200 px-3.5 py-1.5 rounded-lg text-xs font-medium transition border border-gray-700">
+                            <i class="fa-solid fa-camera mr-1 text-emerald-400"></i> Snapshot All
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Grid Container -->
+                <div id="watch-grid-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Cam 1 -->
+                    <div class="bg-dark-800 border border-gray-800 rounded-2xl overflow-hidden shadow-lg">
+                        <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+                            <canvas id="grid-canvas-1" class="w-full h-full object-cover"></canvas>
+                            <div class="absolute top-3 left-3 bg-black/70 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-mono text-white flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> ATM-01 Main Lobby
+                            </div>
+                        </div>
+                        <div class="p-3 flex items-center justify-between text-xs">
+                            <span class="font-mono text-gray-400">fps: 60 | res: 1080p</span>
+                            <button onclick="openCameraDetail('ATM-01 Main Lobby', 'atm_lobby_01')" class="text-emerald-400 hover:underline">Manage PTZ</button>
+                        </div>
+                    </div>
+                    <!-- Cam 2 -->
+                    <div class="bg-dark-800 border border-gray-800 rounded-2xl overflow-hidden shadow-lg">
+                        <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+                            <canvas id="grid-canvas-2" class="w-full h-full object-cover"></canvas>
+                            <div class="absolute top-3 left-3 bg-black/70 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-mono text-white flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> ATM-02 Drive-Thru
+                            </div>
+                        </div>
+                        <div class="p-3 flex items-center justify-between text-xs">
+                            <span class="font-mono text-gray-400">fps: 59 | res: 1080p</span>
+                            <button onclick="openCameraDetail('ATM-02 Drive-Thru', 'atm_drivethru_02')" class="text-emerald-400 hover:underline">Manage PTZ</button>
+                        </div>
+                    </div>
+                    <!-- Cam 3 -->
+                    <div class="bg-dark-800 border border-gray-800 rounded-2xl overflow-hidden shadow-lg">
+                        <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+                            <canvas id="grid-canvas-3" class="w-full h-full object-cover"></canvas>
+                            <div class="absolute top-3 left-3 bg-black/70 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-mono text-white flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> ATM-03 Walk-Up Secure
+                            </div>
+                        </div>
+                        <div class="p-3 flex items-center justify-between text-xs">
+                            <span class="font-mono text-gray-400">fps: 60 | res: 1080p</span>
+                            <button onclick="openCameraDetail('ATM-03 Walk-Up Secure', 'atm_walkup_03')" class="text-emerald-400 hover:underline">Manage PTZ</button>
+                        </div>
+                    </div>
+                    <!-- Cam 4 -->
+                    <div class="bg-dark-800 border border-gray-800 rounded-2xl overflow-hidden shadow-lg">
+                        <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+                            <canvas id="grid-canvas-4" class="w-full h-full object-cover"></canvas>
+                            <div class="absolute top-3 left-3 bg-black/70 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-mono text-white flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> ATM-04 Vault Entry
+                            </div>
+                        </div>
+                        <div class="p-3 flex items-center justify-between text-xs">
+                            <span class="font-mono text-gray-400">fps: 60 | res: 4K UHD</span>
+                            <button onclick="openCameraDetail('ATM-04 Vault Entry', 'atm_vault_04')" class="text-emerald-400 hover:underline">Manage PTZ</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: ADMIN STUDIO -->
+            <div id="tab-studio" class="tab-content hidden space-y-6">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Admin Studio & PTZ Camera Console</h2>
+                    <p class="text-xs text-gray-400">Fine-tune PTZ camera settings, recording parameters, and encoding options.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Main Studio Feed & Controls -->
+                    <div class="lg:col-span-2 space-y-4">
+                        <div class="bg-dark-800 border border-gray-800 rounded-2xl p-4 shadow-xl">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 id="studio-camera-title" class="font-semibold text-sm text-white flex items-center gap-2">
+                                    <i class="fa-solid fa-camera-retro text-emerald-400"></i> ATM-01: Main Lobby (Studio Control)
+                                </h3>
+                                <span class="bg-emerald-500/10 text-emerald-400 text-xs px-2 py-0.5 rounded font-mono">Live Session</span>
+                            </div>
+                            <div class="relative bg-black aspect-video rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
+                                <div class="scanline"></div>
+                                <canvas id="studio-canvas" class="w-full h-full object-cover"></canvas>
+                                <div class="absolute bottom-4 left-4 bg-black/80 px-3 py-1.5 rounded-lg text-xs font-mono text-emerald-400 border border-emerald-500/20">
+                                    PAN: <span id="val-pan">0°</span> | TILT: <span id="val-tilt">0°</span> | ZOOM: <span id="val-zoom">1.0x</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PTZ Directional Controller Pad -->
+                        <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-6">
+                            <div>
+                                <h4 class="font-semibold text-sm text-white">Pan / Tilt / Zoom Controls</h4>
+                                <p class="text-xs text-gray-400 mt-0.5">Adjust physical camera orientation remotely.</p>
+                            </div>
+                            <div class="flex items-center space-x-6">
+                                <!-- Directional D-Pad -->
+                                <div class="grid grid-cols-3 gap-1 w-32 h-32 bg-dark-900 p-2 rounded-xl border border-gray-700">
+                                    <div></div>
+                                    <button onclick="moveCamera('up')" class="bg-dark-700 hover:bg-emerald-600 rounded-lg flex items-center justify-center text-white transition"><i class="fa-solid fa-chevron-up text-xs"></i></button>
+                                    <div></div>
+                                    <button onclick="moveCamera('left')" class="bg-dark-700 hover:bg-emerald-600 rounded-lg flex items-center justify-center text-white transition"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                                    <button onclick="moveCamera('home')" class="bg-emerald-600/30 hover:bg-emerald-600 rounded-lg flex items-center justify-center text-emerald-400 hover:text-white transition" title="Reset Position"><i class="fa-solid fa-bullseye text-xs"></i></button>
+                                    <button onclick="moveCamera('right')" class="bg-dark-700 hover:bg-emerald-600 rounded-lg flex items-center justify-center text-white transition"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+                                    <div></div>
+                                    <button onclick="moveCamera('down')" class="bg-dark-700 hover:bg-emerald-600 rounded-lg flex items-center justify-center text-white transition"><i class="fa-solid fa-chevron-down text-xs"></i></button>
+                                    <div></div>
+                                </div>
+
+                                <!-- Zoom controls -->
+                                <div class="flex flex-col space-y-2">
+                                    <button onclick="adjustZoom(0.2)" class="bg-dark-700 hover:bg-emerald-600 text-white w-10 h-10 rounded-xl flex items-center justify-center transition shadow"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                                    <button onclick="adjustZoom(-0.2)" class="bg-dark-700 hover:bg-emerald-600 text-white w-10 h-10 rounded-xl flex items-center justify-center transition shadow"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                                    <button onclick="triggerSnapshot()" class="bg-emerald-600 hover:bg-emerald-500 text-white w-10 h-10 rounded-xl flex items-center justify-center transition shadow" title="Capture Snapshot"><i class="fa-solid fa-camera"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Studio Configuration Panel -->
+                    <div class="space-y-4">
+                        <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5 space-y-4">
+                            <h3 class="font-semibold text-sm text-white flex items-center gap-2">
+                                <i class="fa-solid fa-sliders text-emerald-400"></i> Stream Parameters
+                            </h3>
+                            
+                            <div>
+                                <label class="text-xs text-gray-400 font-medium">Active Terminal</label>
+                                <select onchange="changeActiveTerminal(this.value)" class="w-full mt-1.5 bg-dark-900 border border-gray-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                                    <option value="ATM-01: Main Lobby">ATM-01: Main Lobby</option>
+                                    <option value="ATM-02: Drive-Thru Lane">ATM-02: Drive-Thru Lane</option>
+                                    <option value="ATM-03: Walk-Up Secure">ATM-03: Walk-Up Secure</option>
+                                    <option value="ATM-04: Vault Entry">ATM-04: Vault Entry</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="text-xs text-gray-400 font-medium">Encoding Profile</label>
+                                <select class="w-full mt-1.5 bg-dark-900 border border-gray-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                                    <option>H.264 / AAC (Hardware Accelerated)</option>
+                                    <option>H.265 / HEVC Ultra Low Latency</option>
+                                    <option>VP9 WebRTC Stream</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="text-xs text-gray-400 font-medium">Frame Rate Target</label>
+                                <div class="flex items-center space-x-3 mt-1.5">
+                                    <input type="range" min="15" max="60" value="60" class="w-full accent-emerald-500 bg-dark-900" oninput="document.getElementById('fps-val').innerText = this.value + ' FPS'">
+                                    <span id="fps-val" class="text-xs font-mono text-emerald-400">60 FPS</span>
+                                </div>
+                            </div>
+
+                            <div class="pt-2 border-t border-gray-700/60">
+                                <button onclick="showToast('Studio settings successfully saved and broadcasted!')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl text-xs transition shadow-lg shadow-emerald-900/30">
+                                    Apply Studio Config
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- System Audit Log -->
+                        <div class="bg-dark-800 border border-gray-800 rounded-2xl p-5 space-y-3">
+                            <h3 class="font-semibold text-xs uppercase text-gray-400 tracking-wider">Audit Trail</h3>
+                            <div class="space-y-2 font-mono text-[11px] text-gray-300 max-h-40 overflow-y-auto">
+                                <div class="flex items-center justify-between py-1 border-b border-gray-700/40">
+                                    <span class="text-emerald-400">[11:16]</span>
+                                    <span>Token verified: admin_role</span>
+                                </div>
+                                <div class="flex items-center justify-between py-1 border-b border-gray-700/40">
+                                    <span class="text-emerald-400">[11:15]</span>
+                                    <span>WebSocket connected (4 nodes)</span>
+                                </div>
+                                <div class="flex items-center justify-between py-1 border-b border-gray-700/40">
+                                    <span class="text-emerald-400">[11:14]</span>
+                                    <span>PTZ calibration completed</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: TOKENS & API -->
+            <div id="tab-tokens" class="tab-content hidden space-y-6">
+                <div>
+                    <h2 class="text-xl font-bold text-white">API Tokens & Authentication</h2>
+                    <p class="text-xs text-gray-400">Manage JSON Web Tokens (JWT) for secure camera stream embedding and API access.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-dark-800 border border-gray-800 rounded-2xl p-6 space-y-4">
+                        <h3 class="font-semibold text-sm text-white flex items-center gap-2">
+                            <i class="fa-solid fa-key text-emerald-400"></i> Generate New Token
+                        </h3>
+                        <div>
+                            <label class="text-xs text-gray-400 font-medium">Token Purpose / Client Name</label>
+                            <input type="text" id="token-name" value="SOC-Monitoring-Console-01" class="w-full mt-1.5 bg-dark-900 border border-gray-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400 font-medium">Token Expiration</label>
+                            <select id="token-expiry" class="w-full mt-1.5 bg-dark-900 border border-gray-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                                <option value="1h">1 Hour (High Security)</option>
+                                <option value="24h" selected>24 Hours (Standard Shift)</option>
+                                <option value="30d">30 Days (Service Account)</option>
+                            </select>
+                        </div>
+                        <button onclick="generateNewToken()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl text-xs transition shadow">
+                            Generate Token (JWT)
+                        </button>
+                    </div>
+
+                    <div class="bg-dark-800 border border-gray-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <h3 class="font-semibold text-sm text-white">Active Token Payload</h3>
+                            <p class="text-xs text-gray-400">Copy your generated API token for embedding in `/api/token` route requests.</p>
+                            <div class="bg-dark-900 p-3.5 rounded-xl border border-gray-700 font-mono text-xs text-emerald-400 break-all select-all mt-2" id="jwt-output">
+                                eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbl91c2VyIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzE2MjAwMDAwfQ.sec_live_studio_token_sig99
+                            </div>
+                        </div>
+                        <button onclick="copyTokenToClipboard()" class="bg-dark-700 hover:bg-dark-600 text-gray-200 py-2.5 rounded-xl text-xs font-medium transition border border-gray-700 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-copy text-emerald-400"></i> Copy Token to Clipboard
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Camera Detail Modal -->
+    <div id="camera-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-dark-800 border border-gray-700 rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+                <h3 id="modal-camera-title" class="font-bold text-white text-sm">Camera Stream</h3>
+                <button onclick="closeCameraDetail()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-4 space-y-4">
+                <div class="relative bg-black aspect-video rounded-xl overflow-hidden flex items-center justify-center">
+                    <div class="scanline"></div>
+                    <canvas id="modal-canvas" class="w-full h-full object-cover"></canvas>
+                    <div class="absolute top-3 left-3 bg-black/70 px-2.5 py-1 rounded text-xs font-mono text-emerald-400">
+                        STREAM ID: <span id="modal-camera-id">atm_lobby_01</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between text-xs text-gray-400 font-mono">
+                    <span>Resolution: 1920x1080 @ 60fps</span>
+                    <span class="text-emerald-400"><i class="fa-solid fa-circle-check mr-1"></i> Stream Online</span>
+                </div>
+            </div>
+            <div class="p-4 bg-dark-900 border-t border-gray-700 flex justify-end space-x-3">
+                <button onclick="closeCameraDetail()" class="bg-dark-700 hover:bg-dark-600 text-white px-4 py-2 rounded-xl text-xs font-medium">Close</button>
+                <button onclick="triggerSnapshot(); showToast('Snapshot successfully captured and archived.')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-medium">Capture Snapshot</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Tab Navigation Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-tab').forEach(el => {
+                el.classList.remove('bg-emerald-500/10', 'text-emerald-400', 'border', 'border-emerald-500/20');
+                el.classList.add('text-gray-400', 'hover:bg-dark-700', 'hover:text-white');
+            });
+
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            const activeNav = document.getElementById('nav-' + tabId);
+            activeNav.classList.remove('text-gray-400', 'hover:bg-dark-700', 'hover:text-white');
+            activeNav.classList.add('bg-emerald-500/10', 'text-emerald-400', 'border', 'border-emerald-500/20');
+        }
+
+        // Toast Notification System
+        function showToast(message, title = 'System Notification') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-msg').innerText = message;
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+            }, 3500);
+        }
+
+        // PTZ state variables
+        let ptzState = { pan: 0, tilt: 0, zoom: 1.0 };
+        function moveCamera(direction) {
+            if (direction === 'up') ptzState.tilt = Math.min(45, ptzState.tilt + 5);
+            if (direction === 'down') ptzState.tilt = Math.max(-45, ptzState.tilt - 5);
+            if (direction === 'left') ptzState.pan = Math.max(-60, ptzState.pan - 5);
+            if (direction === 'right') ptzState.pan = Math.min(60, ptzState.pan + 5);
+            if (direction === 'home') { ptzState.pan = 0; ptzState.tilt = 0; ptzState.zoom = 1.0; }
+
+            document.getElementById('val-pan').innerText = ptzState.pan + '°';
+            document.getElementById('val-tilt').innerText = ptzState.tilt + '°';
+            document.getElementById('val-zoom').innerText = ptzState.zoom.toFixed(1) + 'x';
+            showToast(`PTZ Adjusted: Pan ${ptzState.pan}°, Tilt ${ptzState.tilt}°`, 'Camera Control');
+        }
+
+        function adjustZoom(delta) {
+            ptzState.zoom = Math.max(1.0, Math.min(4.0, ptzState.zoom + delta));
+            document.getElementById('val-zoom').innerText = ptzState.zoom.toFixed(1) + 'x';
+            showToast(`Zoom level adjusted to ${ptzState.zoom.toFixed(1)}x`, 'Zoom Control');
+        }
+
+        function triggerSnapshot() {
+            showToast('High-resolution snapshot captured and saved to secure server.', 'Snapshot Saved');
+        }
+
+        function triggerAllSnapshot() {
+            showToast('Captured synchronized snapshots across all 4 ATM terminals.', 'Multi-Feed Snapshot');
+        }
+
+        function changeActiveTerminal(val) {
+            document.getElementById('studio-camera-title').innerHTML = `<i class="fa-solid fa-camera-retro text-emerald-400"></i> ${val} (Studio Control)`;
+            showToast(`Switched active control feed to ${val}`);
+        }
+
+        function toggleAuthModal() {
+            showToast('Admin token active. Authorized as security supervisor.', 'Authentication');
+        }
+
+        function generateNewToken() {
+            const name = document.getElementById('token-name').value;
+            const expiry = document.getElementById('token-expiry').value;
+            const randomHash = Math.random().toString(36.substring(2)) + Math.random().toString(36).substring(2);
+            const newToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ${btoa(name).replace(/=/g,'')}",exp:${expiry},"sig":"${randomHash}"}`;
+            document.getElementById('jwt-output').innerText = newToken;
+            showToast(`Generated new API token for "${name}" (${expiry})`, 'Token Generated');
+        }
+
+        function copyTokenToClipboard() {
+            const text = document.getElementById('jwt-output').innerText;
+            const tempInput = document.createElement('textarea');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            showToast('Token copied to clipboard successfully!', 'Clipboard');
+        }
+
+        function openCameraDetail(title, id) {
+            document.getElementById('modal-camera-title').innerText = title;
+            document.getElementById('modal-camera-id').innerText = id;
+            document.getElementById('camera-modal').classList.remove('hidden');
+            document.getElementById('camera-modal').classList.add('flex');
+        }
+
+        function closeCameraDetail() {
+            document.getElementById('camera-modal').classList.remove('flex');
+            document.getElementById('camera-modal').classList.add('hidden');
+        }
+
+        // Canvas Simulation Loop (Rendering simulated secure camera feeds with timestamp & grid)
+        function initCanvasFeeds() {
+            const canvases = [
+                document.getElementById('cam-canvas-1'),
+                document.getElementById('cam-canvas-2'),
+                document.getElementById('grid-canvas-1'),
+                document.getElementById('grid-canvas-2'),
+                document.getElementById('grid-canvas-3'),
+                document.getElementById('grid-canvas-4'),
+                document.getElementById('studio-canvas'),
+                document.getElementById('modal-canvas')
+            ].filter(Boolean);
+
+            canvases.forEach(canvas => {
+                canvas.width = 640;
+                canvas.height = 360;
+            });
+
+            let frame = 0;
+            function render() {
+                frame++;
+                canvases.forEach((canvas, index) => {
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return;
+
+                    // Background gradient
+                    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                    grad.addColorStop(0, '#0d1322');
+                    grad.addColorStop(1, '#05070c');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    // Draw subtle grid lines
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+                    ctx.lineWidth = 1;
+                    for (let x = 0; x < canvas.width; x += 40) {
+                        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+                    }
+                    for (let y = 0; y < canvas.height; y += 40) {
+                        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+                    }
+
+                    // Simulated moving radar/scanner element or camera subject
+                    ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+                    ctx.beginPath();
+                    const cx = canvas.width / 2 + Math.sin(frame * 0.02 + index) * 50;
+                    const cy = canvas.height / 2 + Math.cos(frame * 0.01 + index) * 30;
+                    ctx.arc(cx, cy, 60, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Security crosshair
+                    ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy);
+                    ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
+                    ctx.stroke();
+
+                    // Timestamp overlay
+                    ctx.fillStyle = '#10b981';
+                    ctx.font = '12px "JetBrains Mono", monospace';
+                    const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+                    ctx.fillText(`CAM_SEC_${index + 1} | ${now} | 60FPS`, 15, canvas.height - 15);
+                });
+
+                requestAnimationFrame(render);
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        window.onload = function () {
+            initCanvasFeeds();
+        };
+    </script>
+</body>
+</html>
